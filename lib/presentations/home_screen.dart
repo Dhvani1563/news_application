@@ -114,10 +114,10 @@ class _MainScreenState extends State<MainScreen> {
 
 Widget _buildCategoriesList() {
   final List<Map<String, dynamic>> categories = [
-    {"title": "Sports", "icon": Icons.sports_soccer, "color": Colors.green, "screen": SportsNewsScreen()},
-    {"title": "Crime", "icon": Icons.gavel, "color": Colors.red, "screen": CrimeNewsScreen()},
-    {"title": "Tech", "icon": Icons.memory, "color": Colors.blue, "screen": AutomationNewsScreen()},
-    {"title": "Travel", "icon": Icons.flight, "color": Colors.orange, "screen": TravelNewsScreen()},
+    {"title": "Sports", "icon": Icons.sports_soccer, "screen": SportsNewsScreen()},
+    {"title": "Crime", "icon": Icons.gavel, "screen": CrimeNewsScreen()},
+    {"title": "Tech", "icon": Icons.memory, "screen": AutomationNewsScreen()},
+    {"title": "Travel", "icon": Icons.flight, "screen": TravelNewsScreen()},
   ];
 
   return Container(
@@ -125,14 +125,14 @@ Widget _buildCategoriesList() {
     color: Colors.white,
     child: ListView.builder(
       scrollDirection: Axis.horizontal,
-      itemCount: categories.length + 1, // Adding 1 for Shorts
+      itemCount: categories.length + 1, // +1 for Shorts button
       padding: const EdgeInsets.symmetric(horizontal: 10),
       itemBuilder: (context, index) {
         if (index == categories.length) {
-          // Handle Shorts separately
+          // Shorts Button
           return GestureDetector(
             onTap: () async {
-              final shortsVideos = await ApiService().fetchYouTubeShorts(); // Fetch Shorts videos
+              final shortsVideos = await ApiService().fetchYouTubeShorts();
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -167,8 +167,14 @@ Widget _buildCategoriesList() {
         }
 
         final category = categories[index];
+        bool isSelected = selectedCategory == category["title"];
+        Color categoryColor = Colors.blue.shade800; // Dark Blue Color
+
         return GestureDetector(
           onTap: () {
+            setState(() {
+              selectedCategory = category["title"]; // Update selected category
+            });
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => category["screen"]),
@@ -178,20 +184,20 @@ Widget _buildCategoriesList() {
             margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: category["color"].withOpacity(0.2),
+              color: isSelected ? categoryColor.withOpacity(0.2) : Colors.transparent, // Light blue background if selected
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: category["color"]),
+              border: Border.all(color: categoryColor), // Dark Blue Border
             ),
             child: Row(
               children: [
-                Icon(category["icon"], size: 18, color: category["color"]),
+                Icon(category["icon"], size: 18, color: categoryColor), // Dark Blue Icon
                 const SizedBox(width: 6),
                 Text(
                   category["title"],
                   style: GoogleFonts.hindVadodara(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: category["color"],
+                    color: categoryColor, // Dark Blue Text
                   ),
                 ),
               ],
