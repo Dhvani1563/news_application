@@ -3,7 +3,6 @@ import 'package:newsapp/presentations/NewsDetailScreen.dart';
 import 'package:newsapp/models/post.dart';
 import 'package:newsapp/services/api_services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_html/flutter_html.dart';
 import 'package:newsapp/presentations/searchscreen.dart';
 import 'package:newsapp/presentations/profile.dart';
 import 'package:google_fonts/google_fonts.dart';
