@@ -118,6 +118,7 @@ Widget _buildCategoriesList() {
     {"title": "Crime", "icon": Icons.gavel, "screen": CrimeNewsScreen()},
     {"title": "Tech", "icon": Icons.memory, "screen": AutomationNewsScreen()},
     {"title": "Travel", "icon": Icons.flight, "screen": TravelNewsScreen()},
+    {"title": "Shorts", "icon": Icons.play_circle_fill}, // Shorts category
   ];
 
   return Container(
@@ -125,13 +126,16 @@ Widget _buildCategoriesList() {
     color: Colors.white,
     child: ListView.builder(
       scrollDirection: Axis.horizontal,
-      itemCount: categories.length + 1, // +1 for Shorts button
+      itemCount: categories.length,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       itemBuilder: (context, index) {
-        if (index == categories.length) {
-          // Shorts Button
-          return GestureDetector(
-            onTap: () async {
+        final category = categories[index];
+        bool isSelected = selectedCategory == category["title"];
+        Color categoryColor = Colors.blue.shade800; // Set same color for all categories
+
+        return GestureDetector(
+          onTap: () async {
+            if (category["title"] == "Shorts") {
               final shortsVideos = await ApiService().fetchYouTubeShorts();
               Navigator.push(
                 context,
@@ -139,65 +143,34 @@ Widget _buildCategoriesList() {
                   builder: (context) => VideoFeedScreen(videoPosts: shortsVideos),
                 ),
               );
-            },
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.purple),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.play_circle_fill, size: 18, color: Colors.purple),
-                  const SizedBox(width: 6),
-                  Text(
-                    "Shorts",
-                    style: GoogleFonts.hindVadodara(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.purple,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        final category = categories[index];
-        bool isSelected = selectedCategory == category["title"];
-        Color categoryColor = Colors.blue.shade800; // Dark Blue Color
-
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              selectedCategory = category["title"]; // Update selected category
-            });
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => category["screen"]),
-            );
+            } else {
+              setState(() {
+                selectedCategory = category["title"]; // Update selected category
+              });
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => category["screen"]),
+              );
+            }
           },
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected ? categoryColor.withOpacity(0.2) : Colors.transparent, // Light blue background if selected
+              color: isSelected ? categoryColor.withOpacity(0.2) : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: categoryColor), // Dark Blue Border
+              border: Border.all(color: categoryColor), // Matching border color
             ),
             child: Row(
               children: [
-                Icon(category["icon"], size: 18, color: categoryColor), // Dark Blue Icon
+                Icon(category["icon"], size: 18, color: categoryColor), // Matching icon color
                 const SizedBox(width: 6),
                 Text(
                   category["title"],
                   style: GoogleFonts.hindVadodara(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: categoryColor, // Dark Blue Text
+                    color: categoryColor, // Matching text color
                   ),
                 ),
               ],
@@ -208,6 +181,7 @@ Widget _buildCategoriesList() {
     ),
   );
 }
+
 
   Widget _buildSectionTitle(String title) {
     return Padding(
