@@ -23,6 +23,8 @@ class _MainScreenState extends State<MainScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late Future<List<Post>> posts;
   String selectedCategory = '';
+  double horizontalListHeight = 250;
+  double cardWidth = 320;
 
   @override
   void initState() {
@@ -37,15 +39,32 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: Colors.white,
       drawer: _buildDrawer(),
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildAppBar(),
-            _buildCategoriesList(),
-            _buildHorizontalNewsList(), // Horizontal slider first
-            _buildSectionTitle("Latest News"),
-            Expanded(child: _buildVerticalNewsList()), // Vertical news list below
-          ],
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (scrollNotification) {
+            if (scrollNotification is ScrollUpdateNotification) {
+              setState(() {
+                double newHeight = (250 - scrollNotification.metrics.pixels * 0.3).clamp(180, 250);
+                double newWidth = (320 - scrollNotification.metrics.pixels * 0.2).clamp(250, 320);
+                horizontalListHeight = newHeight;
+                cardWidth = newWidth;
+              });
+            }
+            return false;
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildAppBar(),
+              _buildCategoriesList(),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: horizontalListHeight,
+                child: _buildHorizontalNewsList(),
+              ),
+              _buildSectionTitle("Latest News"),
+              Expanded(child: _buildVerticalNewsList()),
+            ],
+          ),
         ),
       ),
     );
@@ -111,98 +130,84 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-Widget _buildCategoriesList() {
-  final List<Map<String, dynamic>> categories = [
-    {"title": "Sports", "icon": Icons.sports_soccer, "screen": SportsNewsScreen()},
-    {"title": "Crime", "icon": Icons.gavel, "screen": CrimeNewsScreen()},
-    {"title": "Tech", "icon": Icons.memory, "screen": AutomationNewsScreen()},
-    {"title": "Travel", "icon": Icons.flight, "screen": TravelNewsScreen()},
-    {"title": "Shorts", "icon": Icons.play_circle_fill}, // Shorts category
-  ];
+  Widget _buildCategoriesList() {
+    final List<Map<String, dynamic>> categories = [
+      {"title": "Sports", "icon": Icons.sports_soccer, "screen": SportsNewsScreen()},
+      {"title": "Crime", "icon": Icons.gavel, "screen": CrimeNewsScreen()},
+      {"title": "Tech", "icon": Icons.memory, "screen": AutomationNewsScreen()},
+      {"title": "Travel", "icon": Icons.flight, "screen": TravelNewsScreen()},
+      {"title": "Shorts", "icon": Icons.play_circle_fill},
+    ];
 
-  return Container(
-    height: 50,
-    color: Colors.white,
-    child: ListView.builder(
-      scrollDirection: Axis.horizontal,
-      itemCount: categories.length,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      itemBuilder: (context, index) {
-        final category = categories[index];
-        bool isSelected = selectedCategory == category["title"];
-        Color categoryColor = Colors.blue.shade800; // Set same color for all categories
+    return Container(
+      height: 50,
+      color: Colors.white,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        itemBuilder: (context, index) {
+          final category = categories[index];
+          bool isSelected = selectedCategory == category["title"];
+          Color categoryColor = Colors.blue.shade800;
 
-        return GestureDetector(
-          onTap: () async {
-            if (category["title"] == "Shorts") {
-              final shortsVideos = await ApiService().fetchYouTubeShorts();
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => VideoFeedScreen(videoPosts: shortsVideos),
-                ),
-              );
-            } else {
-              setState(() {
-                selectedCategory = category["title"]; // Update selected category
-              });
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => category["screen"]),
-              );
-            }
-          },
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected ? categoryColor.withOpacity(0.2) : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: categoryColor), // Matching border color
-            ),
-            child: Row(
-              children: [
-                Icon(category["icon"], size: 18, color: categoryColor), // Matching icon color
-                const SizedBox(width: 6),
-                Text(
-                  category["title"],
-                  style: GoogleFonts.hindVadodara(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: categoryColor, // Matching text color
+          return GestureDetector(
+            onTap: () async {
+              if (category["title"] == "Shorts") {
+                final shortsVideos = await ApiService().fetchYouTubeShorts();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VideoFeedScreen(videoPosts: shortsVideos),
                   ),
-                ),
-              ],
+                );
+              } else {
+                setState(() {
+                  selectedCategory = category["title"];
+                });
+                Navigator.push(context, MaterialPageRoute(builder: (context) => category["screen"]));
+              }
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? categoryColor.withOpacity(0.2) : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: categoryColor),
+              ),
+              child: Row(
+                children: [
+                  Icon(category["icon"], size: 18, color: categoryColor),
+                  const SizedBox(width: 6),
+                  Text(
+                    category["title"],
+                    style: GoogleFonts.hindVadodara(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: categoryColor,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
-    ),
-  );
-}
-
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Text(title, style: GoogleFonts.hindVadodara(fontSize: 20, fontWeight: FontWeight.bold)),
+          );
+        },
+      ),
     );
   }
-
- Widget _buildHorizontalNewsList() {
-  return FutureBuilder<List<Post>>(
-    future: posts,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      } else if (snapshot.hasError) {
-        return Text('Error: ${snapshot.error}');
-      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-        return const Text('No posts available');
-      } else {
-        return SizedBox(
-          height: 250, // Reduced height for better layout
-          child: ListView.builder(
+   Widget _buildHorizontalNewsList() {
+    return FutureBuilder<List<Post>>(
+      future: posts,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Text('No posts available');
+        } else {
+          return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: snapshot.data!.length,
@@ -218,13 +223,11 @@ Widget _buildCategoriesList() {
                   );
                 },
                 child: Container(
-                  width: 320, // Ensures images are not cut off
+                  width: 320,
                   margin: const EdgeInsets.only(right: 16),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black12, blurRadius: 4),
-                    ],
+                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
                   ),
                   child: Column(
                     children: [
@@ -236,8 +239,8 @@ Widget _buildCategoriesList() {
                         child: CachedNetworkImage(
                           imageUrl: post.featuredImageUrl,
                           width: double.infinity,
-                          height: 180, // Ensures full image fits
-                          fit: BoxFit.cover, // Avoids image cutting
+                          height: 180,
+                          fit: BoxFit.cover,
                         ),
                       ),
                       Expanded(
@@ -259,100 +262,108 @@ Widget _buildCategoriesList() {
                 ),
               );
             },
-          ),
-        );
-      }
-    },
-  );
-}
- Widget _buildVerticalNewsList() {
-  return FutureBuilder<List<Post>>(
-    future: posts,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-        return Center(
-          child: Text("No news available", style: GoogleFonts.hindVadodara()),
-        );
-      } else {
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          itemCount: snapshot.data!.length,
-          itemBuilder: (context, index) {
-            final post = snapshot.data![index];
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => NewsDetailScreen(post: post),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildVerticalNewsList() {
+    return FutureBuilder<List<Post>>(
+      future: posts,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(
+            child: Text("No news available", style: GoogleFonts.hindVadodara()),
+          );
+        } else {
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: snapshot.data!.length,
+            itemBuilder: (context, index) {
+              final post = snapshot.data![index];
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => NewsDetailScreen(post: post),
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
                   ),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black12, blurRadius: 4),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(
-                        imageUrl: post.featuredImageUrl,
-                        width: 120, // Fixed width for consistency
-                        height: 80, // Fixed height
-                        fit: BoxFit.cover, // Ensures full image is visible
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: CachedNetworkImage(
+                          imageUrl: post.featuredImageUrl,
+                          width: 120,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            post.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.hindVadodara(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              post.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.hindVadodara(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            "Tap to read more...",
-                            style: GoogleFonts.hindVadodara(
-                              fontSize: 14,
-                              color: Colors.grey.shade700,
+                            const SizedBox(height: 6),
+                            Text(
+                              "Tap to read more...",
+                              style: GoogleFonts.hindVadodara(
+                                fontSize: 14,
+                                color: Colors.grey.shade700,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
-        );
-      }
-    },
-  );
+              );
+            },
+          );
+        }
+      },
+    );
+  }
 }
 
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Text(title, style: GoogleFonts.hindVadodara(fontSize: 20, fontWeight: FontWeight.bold)),
+    );
+  }
 
   Widget _buildDrawerItem(String title) {
     return GestureDetector(
       onTap: () {},
-      child: Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(title, style: GoogleFonts.hindVadodara(fontSize: 18))),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(title, style: GoogleFonts.hindVadodara(fontSize: 18)),
+      ),
     );
   }
-}
+

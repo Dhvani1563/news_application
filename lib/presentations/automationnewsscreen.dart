@@ -22,7 +22,7 @@ class AutomationNewsScreen extends StatefulWidget {
 class _AutomationNewsScreenState extends State<AutomationNewsScreen> {
   Future<List<Post>>? automationPosts;
   final HtmlUnescape unescape = HtmlUnescape();
-  String selectedCategory = "Tech & Auto"; // ✅ Default selected category
+  String selectedCategory = "Tech"; // ✅ Default selected category
 
   @override
   void initState() {
@@ -92,75 +92,71 @@ class _AutomationNewsScreenState extends State<AutomationNewsScreen> {
   }
 
   Widget _buildCategoriesList() {
-    return Container(
-      height: 50,
-      margin: const EdgeInsets.only(top: 8),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        children: [
-          _buildCategoryItem("Sports", Icons.sports_soccer),
-          _buildCategoryItem("Crime", Icons.gavel),
-          _buildCategoryItem("Travel", Icons.flight),
-          _buildCategoryItem("Tech & Auto", Icons.directions_car),
-          _buildCategoryItem("Shorts", Icons.play_arrow),
-        ],
-      ),
-    );
-  }
+  final List<Map<String, dynamic>> categories = [
+    {"title": "Sports", "icon": Icons.sports_soccer, "screen": SportsNewsScreen()},
+    {"title": "Crime", "icon": Icons.gavel, "screen": CrimeNewsScreen()},
+    {"title": "Tech", "icon": Icons.memory, "screen": AutomationNewsScreen()},
+    {"title": "Travel", "icon": Icons.flight, "screen": TravelNewsScreen()},
+    {"title": "Shorts", "icon": Icons.play_circle_fill}, // Shorts category
+  ];
 
-  Widget _buildCategoryItem(String title, IconData icon) {
-  bool isSelected = selectedCategory == title;
-  return GestureDetector(
-    onTap: () {
-      if (title == "Sports") {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const SportsNewsScreen()));
-      } else if (title == "Crime") {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const CrimeNewsScreen()));
-      } else if (title == "Tech & Auto") {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const AutomationNewsScreen()));
-      } else if (title == "Travel") {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const TravelNewsScreen()));
-      } else if (title == "Shorts") {
-        ApiService apiService = ApiService();
-        apiService.fetchYouTubeShorts().then((videos) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => VideoFeedScreen(videoPosts: videos),
+  return Container(
+    height: 50,
+    color: Colors.white,
+    child: ListView.builder(
+      scrollDirection: Axis.horizontal,
+      itemCount: categories.length,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      itemBuilder: (context, index) {
+        final category = categories[index];
+        bool isSelected = selectedCategory == category["title"];
+        Color categoryColor = Colors.blue.shade800; // Set same color for all categories
+
+        return GestureDetector(
+          onTap: () async {
+            if (category["title"] == "Shorts") {
+              final shortsVideos = await ApiService().fetchYouTubeShorts();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => VideoFeedScreen(videoPosts: shortsVideos),
+                ),
+              );
+            } else {
+              setState(() {
+                selectedCategory = category["title"]; // Update selected category
+              });
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => category["screen"]),
+              );
+            }
+          },
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? categoryColor.withOpacity(0.2) : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: categoryColor), // Matching border color
             ),
-          );
-        }).catchError((error) {
-          print("❌ Error fetching videos: $error");
-        });
-      } else {
-        setState(() {
-          selectedCategory = isSelected ? '' : title;
-          automationPosts = ApiService().fetchPosts(category: title); // ✅ Fixed Error
-        });
-      }
-    },
-    child: Container(
-      margin: const EdgeInsets.only(right: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.blue.withOpacity(0.2) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: isSelected ? Colors.blue : Colors.grey),
-          const SizedBox(width: 6),
-          Text(
-            title,
-            style: GoogleFonts.hindVadodara(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: isSelected ? Colors.blue : Colors.black,
+            child: Row(
+              children: [
+                Icon(category["icon"], size: 18, color: categoryColor), // Matching icon color
+                const SizedBox(width: 6),
+                Text(
+                  category["title"],
+                  style: GoogleFonts.hindVadodara(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: categoryColor, // Matching text color
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     ),
   );
 }
