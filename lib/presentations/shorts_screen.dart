@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:newsapp/models/post.dart';
@@ -49,7 +50,7 @@ class _VideoFeedScreenState extends State<VideoFeedScreen> {
         itemBuilder: (context, index) {
           return VideoPostWidget(
             video: widget.videoPosts![index],
-            isPlaying: index == _currentIndex, // ✅ Auto-play current video
+            isPlaying: index == _currentIndex,
           );
         },
       ),
@@ -68,49 +69,52 @@ class VideoPostWidget extends StatefulWidget {
 }
 
 class _VideoPostWidgetState extends State<VideoPostWidget> {
-  late WebViewController _webViewController;
-  bool isMuted = false; // ✅ Default: Speaker ON
+  WebViewController? _webViewController;
   bool isPaused = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeWebView();
+
+    if (Platform.isAndroid || Platform.isIOS) {
+      String videoUrl = widget.video.videoUrl.replaceAll(
+          "youtube.com/shorts/", "youtube.com/embed/") +
+          "?autoplay=1&mute=1&playsinline=1&enablejsapi=1";
+
+      _webViewController = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(Colors.black)
+        ..loadRequest(Uri.parse(videoUrl));
+
+      _enableSoundOnPlay();
+    }
   }
 
-  void _initializeWebView() {
-    String videoUrl = widget.video.videoUrl
-        .replaceAll("youtube.com/shorts/", "youtube.com/embed/")
-        .split("?")[0]; // ✅ Convert to embed format
-
-    // ✅ Add autoplay & JS API parameters
-    String finalUrl = "$videoUrl?autoplay=1&mute=${isMuted ? 1 : 0}&playsinline=1&controls=0&modestbranding=1&rel=0&enablejsapi=1";
-
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..loadRequest(Uri.parse(finalUrl))
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (String url) {
-          // ✅ Inject JavaScript to force autoplay
-          _webViewController.runJavaScript("""
+  // ✅ Ensure video starts playing with sound when visible
+  void _enableSoundOnPlay() {
+    _webViewController?.setNavigationDelegate(
+      NavigationDelegate(
+        onPageFinished: (_) {
+          _webViewController?.runJavaScript("""
             setTimeout(() => {
-              document.querySelector('video')?.play();
+              var video = document.querySelector('video');
+              if (video) {
+                video.muted = true;   // Start muted initially
+                video.play();         // Auto-play video
+                setTimeout(() => {
+                  video.muted = false; // ✅ Turn audio ON automatically
+                }, 500);
+              }
             }, 500);
           """);
         },
-      ));
+      ),
+    );
   }
 
   @override
-  void didUpdateWidget(VideoPostWidget oldWidget) {
+  void didUpdateWidget(covariant VideoPostWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
-    if (oldWidget.video.videoUrl != widget.video.videoUrl) {
-      _initializeWebView();
-    }
-
-    // ✅ Auto-Play on Scroll
     if (widget.isPlaying) {
       _resumeVideo();
     } else {
@@ -118,53 +122,49 @@ class _VideoPostWidgetState extends State<VideoPostWidget> {
     }
   }
 
-  // ✅ Auto-Pause When Scrolling Away
   void _pauseVideo() {
-    _webViewController.runJavaScript("document.querySelector('video')?.pause();");
+    _webViewController?.runJavaScript("document.querySelector('video')?.pause();");
     setState(() {
       isPaused = true;
     });
   }
 
-  // ✅ Auto-Play When Scrolling to Video
   void _resumeVideo() {
-    _webViewController.runJavaScript("document.querySelector('video')?.play();");
+    _webViewController?.runJavaScript("document.querySelector('video')?.play();");
     setState(() {
       isPaused = false;
     });
   }
 
-  // ✅ Toggle Mute/Unmute
-  void _toggleMute() {
-    _webViewController.runJavaScript(
-      isMuted
-          ? "document.querySelector('video').muted = false;"
-          : "document.querySelector('video').muted = true;"
-    );
-    setState(() {
-      isMuted = !isMuted;
-    });
-  }
-
-  // ✅ Play/Pause Video on Tap
-  void _toggleVideo() {
-    if (isPaused) {
-      _resumeVideo();
-    } else {
-      _pauseVideo();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: const Center(
+          child: Text(
+            "WebView is not supported on Windows/macOS/Linux",
+            style: TextStyle(color: Colors.white, fontSize: 18),
+          ),
+        ),
+      );
+    }
+
     return GestureDetector(
-      onTap: _toggleVideo,
+      onTap: () {
+        if (isPaused) {
+          _resumeVideo();
+        } else {
+          _pauseVideo();
+        }
+      },
       child: Stack(
         children: [
-          // ✅ Full-Screen WebView Video
-          Positioned.fill(child: WebViewWidget(controller: _webViewController)),
+          // ✅ Show WebView only on Android/iOS
+          if (Platform.isAndroid || Platform.isIOS)
+            WebViewWidget(controller: _webViewController!),
 
-          // ✅ Video Title Overlay
+          // Overlays
           Positioned(
             top: 40,
             left: 20,
@@ -172,6 +172,7 @@ class _VideoPostWidgetState extends State<VideoPostWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Video Title
                 Text(
                   widget.video.title,
                   style: const TextStyle(
@@ -186,35 +187,21 @@ class _VideoPostWidgetState extends State<VideoPostWidget> {
             ),
           ),
 
-          // ✅ Side Action Buttons (Like, Share, Mute/Unmute)
+          // Side Action Buttons
           Positioned(
             bottom: 40,
             right: 10,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // ✅ Mute/Unmute Button
-                IconButton(
-                  icon: Icon(
-                    isMuted ? Icons.volume_off : Icons.volume_up,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                  onPressed: _toggleMute,
-                ),
-                const Text("Sound", style: TextStyle(color: Colors.white, fontSize: 14)),
-
-                const SizedBox(height: 10),
-
-                // ✅ Like Button
+                // Like Button
                 IconButton(
                   icon: const Icon(Icons.thumb_up, color: Colors.white, size: 30),
                   onPressed: () {},
                 ),
-
                 const SizedBox(height: 10),
 
-                // ✅ Share Button
+                // Share Button
                 IconButton(
                   icon: const Icon(Icons.share, color: Colors.white, size: 30),
                   onPressed: () {},

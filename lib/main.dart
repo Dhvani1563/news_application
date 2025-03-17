@@ -1,3 +1,4 @@
+import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'presentations/splash.dart';
@@ -19,87 +20,105 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  _HomeScreenState createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
+class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.grey[800]!,
-              Colors.grey[600]!,
-            ],
+      body: Stack(
+        children: [
+          // Background Gradient (Blue & White)
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF0072FF),
+                  Color(0xFF00C6FF),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Discover More About World!',
-                textAlign: TextAlign.left,
-                style: GoogleFonts.hindVadodara( // ✅ Applied Hind Vadodara
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+
+          // Floating News Overlay (Optional)
+
+          // Main Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 100),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Animated Text
+                Center(
+                  child: AnimatedTextKit(
+                    animatedTexts: [
+                      TypewriterAnimatedText(
+                        'Mantavya',
+                        textStyle: GoogleFonts.sora(
+                          fontSize: 50,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white, // Blue text
+                        ),
+                        speed: const Duration(milliseconds: 200),
+                      ),
+                    ],
+                    repeatForever: true,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'You can read the hottest and popular\nnews anywhere and anytime\nfor free, let\'s start',
-                textAlign: TextAlign.left,
-                style: GoogleFonts.hindVadodara( // ✅ Applied Hind Vadodara
-                  fontSize: 14,
-                  color: Colors.grey[300],
-                ),
-              ),
-              const SizedBox(height: 40),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MainScreen(),
+
+                const SizedBox(height: 20),
+
+                // Subtitle
+                Center(
+                  child: Text(
+                    'Stay Updated. Stay Informed.\nLatest News at Your Fingertips.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 58,
-                    vertical: 25,
                   ),
                 ),
-                child: Text(
-                  'Get Started',
-                  style: GoogleFonts.hindVadodara( // ✅ Applied Hind Vadodara
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+
+                const SizedBox(height: 40),
+
+                // Get Started Button with Glow Effect
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => MainScreen()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF0072FF), // Bright Blue
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 60,
+                        vertical: 20,
+                      ),
+                      elevation: 10,
+                      shadowColor: Colors.blueAccent,
+                    ),
+                    child: Text(
+                      'Get Started',
+                      style: GoogleFonts.sora(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 60),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

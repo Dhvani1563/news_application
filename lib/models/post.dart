@@ -40,11 +40,19 @@ class Post {
       var document = parse(content);
 
       // ✅ Extract YouTube Shorts
-      if (content.contains("youtube.com/shorts/")) {
-        RegExp youtubeShortsRegex = RegExp(r'https:\/\/www\.youtube\.com\/shorts\/[a-zA-Z0-9_-]+');
-        Match? match = youtubeShortsRegex.firstMatch(content);
-        if (match != null) {
-          videoUrl = match.group(0)!;
+      RegExp youtubeShortsRegex = RegExp(r'https:\/\/www\.youtube\.com\/shorts\/[a-zA-Z0-9_-]+');
+      Match? match = youtubeShortsRegex.firstMatch(content);
+      if (match != null) {
+        videoUrl = match.group(0)!;
+      } else {
+        // ✅ Extract from iframe if available
+        var iframes = document.getElementsByTagName("iframe");
+        for (var iframe in iframes) {
+          var src = iframe.attributes['src'] ?? '';
+          if (src.contains("youtube.com")) {
+            videoUrl = src;
+            break;
+          }
         }
       }
     }

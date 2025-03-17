@@ -58,7 +58,7 @@ Future<List<Post>> fetchTravelNews() async {
     const String techTags = "571913,522764,572214"; // Tech tags
     return fetchPosts(category: techAutoCategory, tag: techTags, searchQuery: searchQuery);
   }
-    final String youtubeApiKey = "AIzaSyBaXecQWZJQRZbUkLc7dGx7Qu9QEtpPUig"; // Replace with your YouTube API Key
+    final String youtubeApiKey = "AIzaSyBuUH3_8xOxbefHdJT3NW6dkZuvO9fgLzg"; // Replace with your YouTube API Key
   final String youtubeChannelId = "UCIXeA1npsX8jbl62TdP9-PA"; // Mantavya News Channel ID
   
 

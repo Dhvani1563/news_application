@@ -49,6 +49,9 @@ dependencies:
   webview_flutter: ^4.7.0
   webview_flutter_web: ^0.2.2
   webview_flutter_android: ^3.14.0
+  animated_text_kit:
+  flutter_animated_icons:
+
 
 
 
