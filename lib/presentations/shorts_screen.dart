@@ -77,9 +77,8 @@ class _VideoPostWidgetState extends State<VideoPostWidget> {
     super.initState();
 
     if (Platform.isAndroid || Platform.isIOS) {
-      String videoUrl = widget.video.videoUrl.replaceAll(
-          "youtube.com/shorts/", "youtube.com/embed/") +
-          "?autoplay=1&mute=1&playsinline=1&enablejsapi=1";
+      String videoUrl = "${widget.video.videoUrl.replaceAll(
+          "youtube.com/shorts/", "youtube.com/embed/")}?autoplay=1&mute=1&playsinline=1&enablejsapi=1";
 
       _webViewController = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)

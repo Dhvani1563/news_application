@@ -198,7 +198,7 @@ class _SportsNewsScreenState extends State<SportsNewsScreen> {
     );
   }
 
-  /// ✅ **Vertical News List**
+ 
   Widget _buildVerticalNewsList() {
     return FutureBuilder<List<Post>>(
       future: sportsPosts,
@@ -208,14 +208,22 @@ class _SportsNewsScreenState extends State<SportsNewsScreen> {
         } else if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('⚠️ No sports news available!'));
+          return const Center(child: Text('⚠️ No crime news available!'));
         } else {
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             itemCount: snapshot.data!.length,
             itemBuilder: (context, index) {
               final post = snapshot.data![index];
-              return _buildNewsCard(post);
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => NewsDetailScreen(post: post)),
+                  );
+                },
+                child: _buildNewsCard(post),
+              );
             },
           );
         }
@@ -223,63 +231,61 @@ class _SportsNewsScreenState extends State<SportsNewsScreen> {
     );
   }
 
- /// ✅ **News Card UI with Darker Grey Text Background & Rounded Bottom**
-Widget _buildNewsCard(Post post) {
-  return GestureDetector(
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => NewsDetailScreen(post: post)),
-      );
-    },
-    child: Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 6,
-            spreadRadius: 2,
-            offset: const Offset(0, 3),
-          ),
-        ],
+ Widget _buildNewsCard(Post post) {
+  return Card(
+    margin: const EdgeInsets.only(bottom: 16),
+    elevation: 4,
+    shape: RoundedRectangleBorder(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
+        bottomRight: Radius.circular(12), // ✅ Lower corners rounded
       ),
-      child: Column(
-        children: [
-          /// ✅ Image Section
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: CachedNetworkImage(
-              imageUrl: post.featuredImageUrl,
-              width: double.infinity,
-              height: 180,
-              fit: BoxFit.cover,
-            ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        /// ✅ **News Image with Square Upper Borders**
+        AspectRatio(
+          aspectRatio: 16 / 9,
+          child: CachedNetworkImage(
+            imageUrl: post.featuredImageUrl,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => _imagePlaceholder(),
+            errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 40, color: Colors.red),
           ),
+        ),
 
-          /// ✅ Text Section with Dark Grey Background & Rounded Bottom
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey[400], // ✅ Darker grey background for text
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)), // ✅ Rounded bottom
-            ),
-            child: Text(
-              unescape.convert(post.title),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.hindVadodara(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87, // ✅ Slightly darker text for better contrast
-              ),
+        /// ✅ **Title Section with Rounded Bottom Borders**
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey[300], // ✅ Light grey background for title
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
+              bottomRight: Radius.circular(12), // ✅ Lower corners rounded
             ),
           ),
-        ],
-      ),
+          child: Text(
+            unescape.convert(post.title),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.hindVadodara(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ],
     ),
   );
 }
+
+
+  Widget _imagePlaceholder() {
+    return Container(
+      color: Colors.grey[300],
+      child: const Center(child: CircularProgressIndicator()),
+    );
+  }
 }

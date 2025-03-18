@@ -202,42 +202,38 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
       },
     );
   }
-
- Widget _buildNewsCard(Post post) {
+Widget _buildNewsCard(Post post) {
   return Card(
     margin: const EdgeInsets.only(bottom: 16),
     elevation: 4,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
+        bottomRight: Radius.circular(12), // ✅ Lower corners rounded
+      ),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// ✅ News Image with Rounded Top
+        /// ✅ **News Image with Square Upper Borders**
         AspectRatio(
           aspectRatio: 16 / 9,
-          child: ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(12),
-              topRight: Radius.circular(12),
-            ),
-            child: CachedNetworkImage(
-              imageUrl: post.featuredImageUrl,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => _imagePlaceholder(),
-              errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 40, color: Colors.red),
-            ),
+          child: CachedNetworkImage(
+            imageUrl: post.featuredImageUrl,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => _imagePlaceholder(),
+            errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 40, color: Colors.red),
           ),
         ),
 
-        /// ✅ Title Section with Grey Background & Rounded Bottom
+        /// ✅ **Title Section with Rounded Bottom Borders**
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.grey[300], // ✅ Grey background
+            color: Colors.grey[300], // ✅ Light grey background for title
             borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(12),
-              bottomRight: Radius.circular(12),
+              bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
+              bottomRight: Radius.circular(12), // ✅ Lower corners rounded
             ),
           ),
           child: Text(
