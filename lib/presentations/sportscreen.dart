@@ -12,6 +12,8 @@ import 'package:newsapp/presentations/automationnewsscreen.dart';
 import 'package:newsapp/presentations/travelnewsscreen.dart';
 import 'package:newsapp/presentations/home_screen.dart';
 import 'package:newsapp/presentations/shorts_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class SportsNewsScreen extends StatefulWidget {
   const SportsNewsScreen({super.key});
@@ -99,10 +101,10 @@ class _SportsNewsScreenState extends State<SportsNewsScreen> {
   /// ✅ **Categories List**
   Widget _buildCategoriesList() {
     final List<Map<String, dynamic>> categories = [
-      {"title": "Sports", "icon": Icons.sports_soccer, "screen": SportsNewsScreen()},
-      {"title": "Crime", "icon": Icons.gavel, "screen": CrimeNewsScreen()},
-      {"title": "Tech", "icon": Icons.memory, "screen": AutomationNewsScreen()},
-      {"title": "Travel", "icon": Icons.flight, "screen": TravelNewsScreen()},
+      {"title": "Sports", "icon": Icons.sports_soccer, "screen": const SportsNewsScreen()},
+      {"title": "Crime", "icon": Icons.gavel, "screen": const CrimeNewsScreen()},
+      {"title": "Tech", "icon": Icons.memory, "screen": const AutomationNewsScreen()},
+      {"title": "Travel", "icon": Icons.flight, "screen": const TravelNewsScreen()},
       {"title": "Shorts", "icon": Icons.play_circle_fill},
     ];
 
@@ -166,8 +168,7 @@ class _SportsNewsScreenState extends State<SportsNewsScreen> {
       ),
     );
   }
-
-  /// ✅ **Section Title**
+   /// ✅ **Section Title**
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -198,7 +199,7 @@ class _SportsNewsScreenState extends State<SportsNewsScreen> {
     );
   }
 
- 
+  /// ✅ **News List**
   Widget _buildVerticalNewsList() {
     return FutureBuilder<List<Post>>(
       future: sportsPosts,
@@ -208,22 +209,13 @@ class _SportsNewsScreenState extends State<SportsNewsScreen> {
         } else if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('⚠️ No crime news available!'));
+          return const Center(child: Text('⚠️ No sports news available!'));
         } else {
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             itemCount: snapshot.data!.length,
             itemBuilder: (context, index) {
-              final post = snapshot.data![index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => NewsDetailScreen(post: post)),
-                  );
-                },
-                child: _buildNewsCard(post),
-              );
+              return _buildNewsCard(snapshot.data![index]);
             },
           );
         }
@@ -231,61 +223,77 @@ class _SportsNewsScreenState extends State<SportsNewsScreen> {
     );
   }
 
- Widget _buildNewsCard(Post post) {
-  return Card(
-    margin: const EdgeInsets.only(bottom: 16),
-    elevation: 4,
-    shape: RoundedRectangleBorder(
-      borderRadius: const BorderRadius.only(
-        bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
-        bottomRight: Radius.circular(12), // ✅ Lower corners rounded
+  Widget _buildNewsCard(Post post) {
+  return GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => NewsDetailScreen(post: post),
+        ),
+      );
+    },
+    child: Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        /// ✅ **News Image with Square Upper Borders**
-        AspectRatio(
-          aspectRatio: 16 / 9,
-          child: CachedNetworkImage(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CachedNetworkImage(
             imageUrl: post.featuredImageUrl,
             fit: BoxFit.cover,
             placeholder: (context, url) => _imagePlaceholder(),
             errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 40, color: Colors.red),
           ),
-        ),
-
-        /// ✅ **Title Section with Rounded Bottom Borders**
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey[300], // ✅ Light grey background for title
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
-              bottomRight: Radius.circular(12), // ✅ Lower corners rounded
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    unescape.convert(post.title),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.hindVadodara(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.green),
+                  onPressed: () => _shareToWhatsApp(post),
+                ),
+                IconButton(
+                  icon: const FaIcon(FontAwesomeIcons.facebook, color: Colors.blue),
+                  onPressed: () => _shareToFacebook(post),
+                ),
+              ],
             ),
           ),
-          child: Text(
-            unescape.convert(post.title),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.hindVadodara(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }
 
-
-  Widget _imagePlaceholder() {
-    return Container(
-      color: Colors.grey[300],
-      child: const Center(child: CircularProgressIndicator()),
-    );
+  void _shareToWhatsApp(Post post) async {
+    final url = "https://wa.me/?text=${Uri.encodeComponent("${post.title}\n${post.link}")}";
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
+    }
   }
+
+  void _shareToFacebook(Post post) async {
+    final url = "https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(post.link)}";
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
+    }
+  }
+
+  Widget _imagePlaceholder() => Container(color: Colors.grey[300], child: const Center(child: CircularProgressIndicator()));
 }

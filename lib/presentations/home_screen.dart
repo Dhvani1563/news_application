@@ -12,6 +12,7 @@ import 'package:newsapp/presentations/automationnewsscreen.dart';
 import 'package:newsapp/presentations/sportscreen.dart';
 import 'package:newsapp/presentations/travelnewsscreen.dart';
 import 'package:html_unescape/html_unescape.dart';
+import 'package:newsapp/presentations/notification.dart';
 
 
 class MainScreen extends StatefulWidget {
@@ -73,36 +74,46 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildAppBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          GestureDetector(
-            onTap: () => _scaffoldKey.currentState?.openDrawer(),
-            child: Image.asset('lib/assets/Hamburger.png', width: 24, height: 24),
-          ),
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchScreen()));
-                },
-                child: Image.asset('lib/assets/Search.png', width: 24, height: 24),
-              ),
-              const SizedBox(width: 16),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const MyProfile()));
-                },
-                child: const CircleAvatar(radius: 15, backgroundColor: Colors.grey),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        GestureDetector(
+          onTap: () => _scaffoldKey.currentState?.openDrawer(),
+          child: Image.asset('lib/assets/Hamburger.png', width: 24, height: 24),
+        ),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchScreen()));
+              },
+              child: Image.asset('lib/assets/Search.png', width: 24, height: 24),
+            ),
+            const SizedBox(width: 16),
+
+            /// ✅ Notification Icon
+            GestureDetector(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationScreen())); 
+              },
+              child: Image.asset('lib/assets/Notification.png', width: 24, height: 24),
+            ),
+            const SizedBox(width: 16),
+
+            GestureDetector(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const MyProfile()));
+              },
+              child: const CircleAvatar(radius: 15, backgroundColor: Colors.grey),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildDrawer() {
     return Drawer(
