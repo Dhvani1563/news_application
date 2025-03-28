@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:newsapp/models/post.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class VideoFeedScreen extends StatefulWidget {
   final List<Post>? videoPosts;
@@ -89,7 +91,6 @@ class _VideoPostWidgetState extends State<VideoPostWidget> {
     }
   }
 
-  // ✅ Ensure video starts playing with sound when visible
   void _enableSoundOnPlay() {
     _webViewController?.setNavigationDelegate(
       NavigationDelegate(
@@ -98,10 +99,10 @@ class _VideoPostWidgetState extends State<VideoPostWidget> {
             setTimeout(() => {
               var video = document.querySelector('video');
               if (video) {
-                video.muted = true;   // Start muted initially
-                video.play();         // Auto-play video
+                video.muted = true;
+                video.play();
                 setTimeout(() => {
-                  video.muted = false; // ✅ Turn audio ON automatically
+                  video.muted = false;
                 }, 500);
               }
             }, 500);
@@ -135,6 +136,56 @@ class _VideoPostWidgetState extends State<VideoPostWidget> {
     });
   }
 
+  void _shareShorts() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          height: 120,
+          child: Column(
+            children: [
+              const Text("Share via", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // ✅ WhatsApp Share
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.green, size: 30),
+                    onPressed: () async {
+                      String message = "Check out this Shorts: ${widget.video.videoUrl}";
+                      String whatsappUrl = "https://wa.me/?text=${Uri.encodeComponent(message)}";
+                      if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
+                        await launchUrl(Uri.parse(whatsappUrl));
+                      } else {
+                        throw 'Could not launch WhatsApp';
+                      }
+                    },
+                  ),
+
+                  // ✅ Facebook Share
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.facebook, color: Colors.blue, size: 30),
+                    onPressed: () async {
+                      String message = "Check out this Shorts: ${widget.video.videoUrl}";
+                      String facebookUrl = "https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(widget.video.videoUrl)}";
+                      if (await canLaunchUrl(Uri.parse(facebookUrl))) {
+                        await launchUrl(Uri.parse(facebookUrl));
+                      } else {
+                        throw 'Could not launch Facebook';
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
@@ -159,11 +210,9 @@ class _VideoPostWidgetState extends State<VideoPostWidget> {
       },
       child: Stack(
         children: [
-          // ✅ Show WebView only on Android/iOS
           if (Platform.isAndroid || Platform.isIOS)
             WebViewWidget(controller: _webViewController!),
 
-          // Overlays
           Positioned(
             top: 40,
             left: 20,
@@ -171,7 +220,6 @@ class _VideoPostWidgetState extends State<VideoPostWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Video Title
                 Text(
                   widget.video.title,
                   style: const TextStyle(
@@ -186,24 +234,21 @@ class _VideoPostWidgetState extends State<VideoPostWidget> {
             ),
           ),
 
-          // Side Action Buttons
           Positioned(
             bottom: 40,
             right: 10,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // Like Button
                 IconButton(
                   icon: const Icon(Icons.thumb_up, color: Colors.white, size: 30),
                   onPressed: () {},
                 ),
                 const SizedBox(height: 10),
 
-                // Share Button
                 IconButton(
                   icon: const Icon(Icons.share, color: Colors.white, size: 30),
-                  onPressed: () {},
+                  onPressed: _shareShorts,
                 ),
                 const Text("Share", style: TextStyle(color: Colors.white, fontSize: 14)),
               ],

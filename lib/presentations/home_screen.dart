@@ -14,7 +14,6 @@ import 'package:newsapp/presentations/travelnewsscreen.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:newsapp/presentations/notification.dart';
 
-
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -25,6 +24,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late Future<List<Post>> posts;
+  int breakingNewsCount = 0; // ✅ Breaking news count
   String selectedCategory = '';
   double horizontalListHeight = 250;
   double cardWidth = 320;
@@ -33,6 +33,15 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     posts = ApiService().fetchPosts();
+    _fetchBreakingNewsCount();
+  }
+
+  /// ✅ **Fetch Breaking News Count**
+  Future<void> _fetchBreakingNewsCount() async {
+    List<Post> breakingNews = await ApiService().fetchBreakingNews();
+    setState(() {
+      breakingNewsCount = breakingNews.length;
+    });
   }
 
   @override
@@ -42,78 +51,102 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: Colors.white,
       drawer: _buildDrawer(),
       body: SafeArea(
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (scrollNotification) {
-            if (scrollNotification is ScrollUpdateNotification) {
-              setState(() {
-                double newHeight = (250 - scrollNotification.metrics.pixels * 0.3).clamp(180, 250);
-                double newWidth = (320 - scrollNotification.metrics.pixels * 0.2).clamp(250, 320);
-                horizontalListHeight = newHeight;
-                cardWidth = newWidth;
-              });
-            }
-            return false;
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildAppBar(),
-              _buildCategoriesList(),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                height: horizontalListHeight,
-                child: _buildHorizontalNewsList(),
-              ),
-              _buildSectionTitle("Latest News"),
-              Expanded(child: _buildVerticalNewsList()),
-            ],
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAppBar(),
+            _buildCategoriesList(),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: horizontalListHeight,
+              child: _buildHorizontalNewsList(),
+            ),
+            _buildSectionTitle("Latest News"),
+            Expanded(child: _buildVerticalNewsList()),
+          ],
         ),
       ),
     );
   }
 
+  /// ✅ **App Bar with Notification Count Badge**
   Widget _buildAppBar() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        GestureDetector(
-          onTap: () => _scaffoldKey.currentState?.openDrawer(),
-          child: Image.asset('lib/assets/Hamburger.png', width: 24, height: 24),
-        ),
-        Row(
-          children: [
-            GestureDetector(
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchScreen()));
-              },
-              child: Image.asset('lib/assets/Search.png', width: 24, height: 24),
-            ),
-            const SizedBox(width: 16),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          GestureDetector(
+            onTap: () => _scaffoldKey.currentState?.openDrawer(),
+            child: Image.asset('lib/assets/Hamburger.png', width: 24, height: 24),
+          ),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchScreen()));
+                },
+                child: Image.asset('lib/assets/Search.png', width: 24, height: 24),
+              ),
+              const SizedBox(width: 16),
 
-            /// ✅ Notification Icon
-            GestureDetector(
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationScreen())); 
-              },
-              child: Image.asset('lib/assets/Notification.png', width: 24, height: 24),
-            ),
-            const SizedBox(width: 16),
+              /// ✅ **Notification Icon with Badge**
+              GestureDetector(
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NotificationScreen()),
+                  );
+                  _fetchBreakingNewsCount();
+                },
+                child: Stack(
+                  clipBehavior: Clip.none, // Allow overflow
+                  children: [
+                    Image.asset('lib/assets/Notification.png', width: 24, height: 24),
+                    
+                    /// ✅ Badge Positioned on Upper Right Corner
+                    if (breakingNewsCount > 0)
+                      Positioned(
+                        right: -6, // Adjust position
+                        top: -6, // Adjust position
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 20,
+                            minHeight: 20,
+                          ),
+                          child: Text(
+                            '$breakingNewsCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
 
-            GestureDetector(
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const MyProfile()));
-              },
-              child: const CircleAvatar(radius: 15, backgroundColor: Colors.grey),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const MyProfile()));
+                },
+                child: const CircleAvatar(radius: 15, backgroundColor: Colors.grey),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildDrawer() {
     return Drawer(
@@ -429,4 +462,4 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
-}
+}  

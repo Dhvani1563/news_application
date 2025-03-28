@@ -63,6 +63,9 @@ dependencies:
   webview_flutter_wkwebview: ^3.18.2
   url_launcher: ^6.2.5
   font_awesome_flutter: ^10.6.0
+  share_plus: ^7.2.1
+  shared_preferences: ^2.2.0
+  flutter_local_notifications: 16.3.3 
 
 dev_dependencies:
   flutter_test:

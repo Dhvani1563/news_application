@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:newsapp/models/post.dart';
+import 'package:newsapp/presentations/home_screen.dart';
 import 'package:newsapp/services/api_services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,9 +11,9 @@ import 'package:newsapp/presentations/profile.dart';
 import 'package:newsapp/presentations/sportscreen.dart';
 import 'package:newsapp/presentations/automationnewsscreen.dart';
 import 'package:newsapp/presentations/crimescreen..dart';
-import 'package:newsapp/presentations/home_screen.dart';
 import 'package:newsapp/presentations/shorts_screen.dart';
-
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 class TravelNewsScreen extends StatefulWidget {
   const TravelNewsScreen({super.key});
 
@@ -23,7 +24,7 @@ class TravelNewsScreen extends StatefulWidget {
 class _TravelNewsScreenState extends State<TravelNewsScreen> {
   Future<List<Post>>? travelPosts;
   final HtmlUnescape unescape = HtmlUnescape();
-  String selectedCategory = "Travel"; // ✅ Default selected
+  String selectedCategory = "Travel"; 
 
   @override
   void initState() {
@@ -39,9 +40,9 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildAppBar(),
-            _buildCategoriesList(), // ✅ Category Icons
             _buildSectionTitle("Latest Travel News"),
+            _buildAppBar(),
+            _buildCategoriesList(),
             Expanded(child: _buildVerticalNewsList()),
           ],
         ),
@@ -49,6 +50,15 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
     );
   }
 
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Text(
+        title,
+        style: GoogleFonts.hindVadodara(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.orange.shade900),
+      ),
+    );
+  }
   Widget _buildAppBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -57,16 +67,13 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
         children: [
           GestureDetector(
             onTap: () {
-              Navigator.pushReplacement(
+              Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => const MainScreen()),
+                (route) => false,
               );
             },
             child: const Icon(Icons.arrow_back, size: 24, color: Colors.black),
-          ),
-          Text(
-            "Travel News",
-            style: GoogleFonts.hindVadodara(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
           ),
           Row(
             children: [
@@ -96,7 +103,7 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
       {"title": "Crime", "icon": Icons.gavel, "screen": CrimeNewsScreen()},
       {"title": "Tech", "icon": Icons.memory, "screen": AutomationNewsScreen()},
       {"title": "Travel", "icon": Icons.flight, "screen": TravelNewsScreen()},
-      {"title": "Shorts", "icon": Icons.play_circle_fill}, // Shorts category
+      {"title": "Shorts", "icon": Icons.play_circle_fill},
     ];
 
     return Container(
@@ -160,15 +167,6 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Text(
-        title,
-        style: GoogleFonts.hindVadodara(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.orange.shade900),
-      ),
-    );
-  }
 
   Widget _buildVerticalNewsList() {
     return FutureBuilder<List<Post>>(
@@ -179,22 +177,14 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
         } else if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
         } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('⚠️ No crime news available!'));
+          return const Center(child: Text('⚠️ No travel news available!'));
         } else {
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             itemCount: snapshot.data!.length,
             itemBuilder: (context, index) {
               final post = snapshot.data![index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => NewsDetailScreen(post: post)),
-                  );
-                },
-                child: _buildNewsCard(post),
-              );
+              return _buildNewsCard(post);
             },
           );
         }
@@ -202,61 +192,96 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
     );
   }
 
- Widget _buildNewsCard(Post post) {
-  return Card(
-    margin: const EdgeInsets.only(bottom: 16),
-    elevation: 4,
-    shape: RoundedRectangleBorder(
-      borderRadius: const BorderRadius.only(
-        bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
-        bottomRight: Radius.circular(12), // ✅ Lower corners rounded
+  Widget _buildNewsCard(Post post) {
+    return GestureDetector(
+      onTap: () {
+        // ✅ Navigate to NewsDetailScreen when tapped
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => NewsDetailScreen(post: post)),
+        );
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: CachedNetworkImage(
+                imageUrl: post.featuredImageUrl,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => _imagePlaceholder(),
+                errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 40, color: Colors.red),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(12),
+                  bottomRight: Radius.circular(12),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // ✅ News Title
+                  Expanded(
+                    child: Text(
+                      unescape.convert(post.title),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.hindVadodara(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+
+                  // ✅ WhatsApp & Facebook Share Icons
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: FaIcon(FontAwesomeIcons.whatsapp, color: Colors.green, size: 20),
+                        onPressed: () => _shareOnWhatsApp(post),
+                      ),
+                      IconButton(
+                        icon: FaIcon(FontAwesomeIcons.facebook, color: Colors.blue, size: 20),
+                        onPressed: () => _shareOnFacebook(post),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        /// ✅ **News Image with Square Upper Borders**
-        AspectRatio(
-          aspectRatio: 16 / 9,
-          child: CachedNetworkImage(
-            imageUrl: post.featuredImageUrl,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => _imagePlaceholder(),
-            errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 40, color: Colors.red),
-          ),
-        ),
-
-        /// ✅ **Title Section with Rounded Bottom Borders**
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey[300], // ✅ Light grey background for title
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
-              bottomRight: Radius.circular(12), // ✅ Lower corners rounded
-            ),
-          ),
-          child: Text(
-            unescape.convert(post.title),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.hindVadodara(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-
-  Widget _imagePlaceholder() {
-    return Container(
-      color: Colors.grey[300],
-      child: const Center(child: CircularProgressIndicator()),
     );
   }
+
+  /// ✅ **WhatsApp Share Function**
+  void _shareOnWhatsApp(Post post) async {
+    final url = "https://wa.me/?text=${Uri.encodeComponent('${post.title}\n${post.link}')}";
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      debugPrint("Could not launch WhatsApp");
+    }
+  }
+
+  /// ✅ **Facebook Share Function**
+  void _shareOnFacebook(Post post) async {
+    final url = "https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(post.link)}";
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      debugPrint("Could not launch Facebook");
+    }
+  }
+
+  Widget _imagePlaceholder() => Container(color: Colors.grey[300], child: const Center(child: CircularProgressIndicator()));
 }

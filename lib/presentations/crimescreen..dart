@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:newsapp/models/post.dart';
+import 'package:newsapp/presentations/home_screen.dart';
 import 'package:newsapp/services/api_services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,10 +9,11 @@ import 'package:newsapp/presentations/NewsDetailScreen.dart';
 import 'package:newsapp/presentations/searchscreen.dart';
 import 'package:newsapp/presentations/profile.dart';
 import 'package:newsapp/presentations/sportscreen.dart';
-import 'package:newsapp/presentations/automationnewsscreen.dart';
 import 'package:newsapp/presentations/travelnewsscreen.dart';
-import 'package:newsapp/presentations/home_screen.dart';
+import 'package:newsapp/presentations/automationnewsscreen.dart';
 import 'package:newsapp/presentations/shorts_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart'; // ✅ For WhatsApp & Facebook icons
 
 class CrimeNewsScreen extends StatefulWidget {
   const CrimeNewsScreen({super.key});
@@ -23,15 +25,14 @@ class CrimeNewsScreen extends StatefulWidget {
 class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
   Future<List<Post>>? crimePosts;
   final HtmlUnescape unescape = HtmlUnescape();
-  String selectedCategory = "Crime"; 
+  String selectedCategory = "Crime"; // Default category
 
   @override
   void initState() {
     super.initState();
     crimePosts = ApiService().fetchCrimeNews();
   }
-
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -65,10 +66,6 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
             },
             child: const Icon(Icons.arrow_back, size: 24, color: Colors.black),
           ),
-          Text(
-            "Crime News",
-            style: GoogleFonts.hindVadodara(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
-          ),
           Row(
             children: [
               GestureDetector(
@@ -97,7 +94,7 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
       {"title": "Crime", "icon": Icons.gavel, "screen": CrimeNewsScreen()},
       {"title": "Tech", "icon": Icons.memory, "screen": AutomationNewsScreen()},
       {"title": "Travel", "icon": Icons.flight, "screen": TravelNewsScreen()},
-      {"title": "Shorts", "icon": Icons.play_circle_fill}, 
+      {"title": "Shorts", "icon": Icons.play_circle_fill},
     ];
 
     return Container(
@@ -166,10 +163,11 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Text(
         title,
-        style: GoogleFonts.hindVadodara(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.red.shade900),
+        style: GoogleFonts.hindVadodara(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blueAccent),
       ),
     );
   }
+
 
   Widget _buildVerticalNewsList() {
     return FutureBuilder<List<Post>>(
@@ -202,55 +200,89 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
       },
     );
   }
-Widget _buildNewsCard(Post post) {
-  return Card(
-    margin: const EdgeInsets.only(bottom: 16),
-    elevation: 4,
-    shape: RoundedRectangleBorder(
-      borderRadius: const BorderRadius.only(
-        bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
-        bottomRight: Radius.circular(12), // ✅ Lower corners rounded
-      ),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        /// ✅ **News Image with Square Upper Borders**
-        AspectRatio(
-          aspectRatio: 16 / 9,
-          child: CachedNetworkImage(
-            imageUrl: post.featuredImageUrl,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => _imagePlaceholder(),
-            errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 40, color: Colors.red),
-          ),
-        ),
 
-        /// ✅ **Title Section with Rounded Bottom Borders**
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey[300], // ✅ Light grey background for title
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
-              bottomRight: Radius.circular(12), // ✅ Lower corners rounded
+  Widget _buildNewsCard(Post post) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// ✅ **News Image**
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: CachedNetworkImage(
+              imageUrl: post.featuredImageUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => _imagePlaceholder(),
+              errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 40, color: Colors.red),
             ),
           ),
-          child: Text(
-            unescape.convert(post.title),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.hindVadodara(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+
+          /// ✅ **Title Section with Social Media Icons**
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.grey[300],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                /// ✅ **Title**
+                Expanded(
+                  child: Text(
+                    unescape.convert(post.title),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.hindVadodara(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                ),
+
+                /// ✅ **WhatsApp and Facebook Share Icons**
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.green), // WhatsApp icon
+                      onPressed: () {
+                        _shareOnWhatsApp(post.link);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.facebook, color: Colors.blue),
+                      onPressed: () {
+                        _shareOnFacebook(post.link);
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
+
+  /// ✅ **WhatsApp Share Function**
+  void _shareOnWhatsApp(String link) async {
+    final uri = Uri.parse("https://wa.me/?text=$link");
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      debugPrint("Could not launch WhatsApp");
+    }
+  }
+
+  /// ✅ **Facebook Share Function**
+  void _shareOnFacebook(String link) async {
+    final uri = Uri.parse("https://www.facebook.com/sharer/sharer.php?u=$link");
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      debugPrint("Could not launch Facebook");
+    }
+  }
 
   Widget _imagePlaceholder() {
     return Container(
@@ -258,4 +290,5 @@ Widget _buildNewsCard(Post post) {
       child: const Center(child: CircularProgressIndicator()),
     );
   }
+
 }

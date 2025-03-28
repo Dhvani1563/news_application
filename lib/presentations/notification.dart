@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:newsapp/models/post.dart';
+import 'package:newsapp/services/api_services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:newsapp/presentations/NewsDetailScreen.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -9,24 +13,38 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  // Sample notifications (Replace this with API data)
-  final List<Map<String, String>> notifications = [
-    {
-      "title": "Breaking News!",
-      "message": "A major sports event is happening now!",
-      "time": "10 min ago"
-    },
-    {
-      "title": "New Article Published",
-      "message": "Check out the latest tech trends of 2025.",
-      "time": "1 hr ago"
-    },
-    {
-      "title": "Weather Update",
-      "message": "Heavy rain expected tomorrow. Stay safe!",
-      "time": "3 hrs ago"
-    },
-  ];
+  final ApiService apiService = ApiService();
+  List<Post> breakingNews = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  /// ✅ **Load Notifications from API**
+  Future<void> _loadNotifications() async {
+    List<Post> news = await apiService.fetchBreakingNews();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int? lastNewsId = prefs.getInt('last_breaking_news_id');
+
+    if (news.isNotEmpty) {
+      int latestNewsId = news.first.id;
+
+      if (lastNewsId == null || latestNewsId > lastNewsId) {
+        await prefs.setInt('last_breaking_news_id', latestNewsId);
+      }
+    }
+
+    setState(() {
+      breakingNews = news;
+    });
+  }
+
+  /// ✅ **Function to Remove `#9090` from Title**
+  String cleanTitle(String text) {
+    return text.replaceAll(RegExp(r'#\d+'), '').trim(); // Removes # followed by numbers
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,9 +64,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: notifications.isEmpty
-          ? _buildNoNotifications()
-          : _buildNotificationList(),
+      body: breakingNews.isEmpty ? _buildNoNotifications() : _buildNotificationList(),
     );
   }
 
@@ -61,7 +77,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           Icon(Icons.notifications_off, size: 80, color: Colors.grey[400]),
           const SizedBox(height: 10),
           Text(
-            "No new notifications",
+            "No breaking news available",
             style: GoogleFonts.hindVadodara(
               fontSize: 18,
               fontWeight: FontWeight.w500,
@@ -73,48 +89,50 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  /// ✅ **Notification List UI**
+  /// ✅ **Notification List UI (Unchanged, just cleaned title)**
   Widget _buildNotificationList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: notifications.length,
-      itemBuilder: (context, index) {
-        final notification = notifications[index];
+    return RefreshIndicator(
+      onRefresh: _loadNotifications,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: breakingNews.length,
+        itemBuilder: (context, index) {
+          final Post news = breakingNews[index];
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          child: ListTile(
-            leading: const Icon(Icons.notifications, color: Colors.blue),
-            title: Text(
-              notification["title"]!,
-              style: GoogleFonts.hindVadodara(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            elevation: 3,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            child: ListTile(
+              leading: const Icon(Icons.notifications, color: Colors.blue),
+              title: Text(
+                cleanTitle(news.title), // ✅ Cleaned title only
+                style: GoogleFonts.hindVadodara(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 4),
+                  Text(
+                    news.date,
+                    style: GoogleFonts.hindVadodara(fontSize: 12, color: Colors.blueGrey),
+                  ),
+                ],
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => NewsDetailScreen(post: news)),
+                );
+              },
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  notification["message"]!,
-                  style: GoogleFonts.hindVadodara(fontSize: 14, color: Colors.black54),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  notification["time"]!,
-                  style: GoogleFonts.hindVadodara(fontSize: 12, color: Colors.blueGrey),
-                ),
-              ],
-            ),
-            onTap: () {
-              // Handle notification click (if needed)
-            },
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
