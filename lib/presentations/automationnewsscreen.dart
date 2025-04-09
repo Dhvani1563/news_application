@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:newsapp/models/post.dart';
-import 'package:newsapp/presentations/home_screen.dart';
 import 'package:newsapp/services/api_services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,10 +7,13 @@ import 'package:html_unescape/html_unescape.dart';
 import 'package:newsapp/presentations/NewsDetailScreen.dart';
 import 'package:newsapp/presentations/searchscreen.dart';
 import 'package:newsapp/presentations/profile.dart';
+import 'package:newsapp/presentations/home_screen.dart';
+import 'package:newsapp/presentations/crimescreen.dart';
 import 'package:newsapp/presentations/sportscreen.dart';
 import 'package:newsapp/presentations/travelnewsscreen.dart';
-import 'package:newsapp/presentations/crimescreen..dart';
 import 'package:newsapp/presentations/shorts_screen.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AutomationNewsScreen extends StatefulWidget {
   const AutomationNewsScreen({super.key});
@@ -21,14 +23,51 @@ class AutomationNewsScreen extends StatefulWidget {
 }
 
 class _AutomationNewsScreenState extends State<AutomationNewsScreen> {
-  Future<List<Post>>? automationPosts;
+  List<Post> automationPosts = [];
   final HtmlUnescape unescape = HtmlUnescape();
-  String selectedCategory = "Tech"; // Default selected category
+  int page = 1;
+  bool isLoadingMore = false;
+  final ScrollController _scrollController = ScrollController();
+  String selectedCategory = "Tech";
 
   @override
   void initState() {
     super.initState();
-    automationPosts = ApiService().fetchTechAutoNews();
+    _fetchAutomationNews();
+    _scrollController.addListener(_scrollListener);
+  }
+
+  Future<void> _fetchAutomationNews() async {
+    List<Post> newPosts = await ApiService(). fetchTechAutoNews(page: page);
+    setState(() {
+      automationPosts.addAll(newPosts);
+    });
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 && !isLoadingMore) {
+      _loadMoreNews();
+    }
+  }
+
+  Future<void> _loadMoreNews() async {
+    setState(() {
+      isLoadingMore = true;
+    });
+
+    page++;
+    List<Post> morePosts = await ApiService(). fetchTechAutoNews(page: page);
+
+    setState(() {
+      automationPosts.addAll(morePosts);
+      isLoadingMore = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -40,8 +79,8 @@ class _AutomationNewsScreenState extends State<AutomationNewsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildAppBar(),
-            _buildCategoriesList(), 
-            _buildSectionTitle("Latest Tech & Auto News"),
+            _buildCategoriesList(),
+            _buildSectionTitle("Latest Tech News"),
             Expanded(child: _buildVerticalNewsList()),
           ],
         ),
@@ -49,21 +88,18 @@ class _AutomationNewsScreenState extends State<AutomationNewsScreen> {
     );
   }
 
+  /// ✅ App Bar
   Widget _buildAppBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
             onTap: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const MainScreen()),
-                (route) => false,
-              );
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainScreen()));
             },
-            child: const Icon(Icons.arrow_back, size: 24, color: Colors.black),
+            child: const Icon(Icons.arrow_back, size: 28, color: Colors.black),
           ),
           Row(
             children: [
@@ -71,14 +107,14 @@ class _AutomationNewsScreenState extends State<AutomationNewsScreen> {
                 onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchScreen()));
                 },
-                child: const Icon(Icons.search, size: 24, color: Colors.black),
+                child: const Icon(Icons.search, size: 26, color: Colors.black),
               ),
               const SizedBox(width: 16),
               GestureDetector(
                 onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const MyProfile()));
                 },
-                child: const CircleAvatar(radius: 15, backgroundColor: Colors.grey),
+                child: const CircleAvatar(radius: 18, backgroundColor: Colors.grey),
               ),
             ],
           ),
@@ -87,13 +123,14 @@ class _AutomationNewsScreenState extends State<AutomationNewsScreen> {
     );
   }
 
+  /// ✅ Categories Bar
   Widget _buildCategoriesList() {
     final List<Map<String, dynamic>> categories = [
-      {"title": "Sports", "icon": Icons.sports_soccer, "screen": SportsNewsScreen()},
-      {"title": "Crime", "icon": Icons.gavel, "screen": CrimeNewsScreen()},
-      {"title": "Tech", "icon": Icons.memory, "screen": AutomationNewsScreen()},
-      {"title": "Travel", "icon": Icons.flight, "screen": TravelNewsScreen()},
-      {"title": "Shorts", "icon": Icons.play_circle_fill}, 
+      {"title": "Sports", "icon": Icons.sports_soccer, "screen": const SportsNewsScreen()},
+      {"title": "Crime", "icon": Icons.gavel, "screen": const CrimeNewsScreen()},
+      {"title": "Tech", "icon": Icons.memory, "screen": const AutomationNewsScreen()},
+      {"title": "Travel", "icon": Icons.flight, "screen": const TravelNewsScreen()},
+      {"title": "Shorts", "icon": Icons.play_circle_fill},
     ];
 
     return Container(
@@ -114,15 +151,13 @@ class _AutomationNewsScreenState extends State<AutomationNewsScreen> {
                 final shortsVideos = await ApiService().fetchYouTubeShorts();
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => VideoFeedScreen(videoPosts: shortsVideos),
-                  ),
+                  MaterialPageRoute(builder: (context) => VideoFeedScreen(videoPosts: shortsVideos)),
                 );
               } else {
                 setState(() {
                   selectedCategory = category["title"];
                 });
-                Navigator.push(
+                Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => category["screen"]),
                 );
@@ -157,103 +192,139 @@ class _AutomationNewsScreenState extends State<AutomationNewsScreen> {
     );
   }
 
+  /// ✅ Section Title
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Text(
-        title,
-        style: GoogleFonts.hindVadodara(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.hindVadodara(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue.shade900,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              height: 3,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade900, Colors.blue.shade300],
+                ),
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  /// ✅ News List
   Widget _buildVerticalNewsList() {
-    return FutureBuilder<List<Post>>(
-      future:  automationPosts,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    return ListView.builder(
+      controller: _scrollController,
+      itemCount: automationPosts.length + (isLoadingMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == automationPosts.length) {
           return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('⚠️ No crime news available!'));
-        } else {
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            itemCount: snapshot.data!.length,
-            itemBuilder: (context, index) {
-              final post = snapshot.data![index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => NewsDetailScreen(post: post)),
-                  );
-                },
-                child: _buildNewsCard(post),
-              );
-            },
-          );
         }
+        return _buildNewsCard(automationPosts[index]);
       },
     );
   }
 
- Widget _buildNewsCard(Post post) {
-  return Card(
-    margin: const EdgeInsets.only(bottom: 16),
-    elevation: 4,
-    shape: RoundedRectangleBorder(
-      borderRadius: const BorderRadius.only(
-        bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
-        bottomRight: Radius.circular(12), // ✅ Lower corners rounded
+  /// ✅ News Card with Share Buttons
+  Widget _buildNewsCard(Post post) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => NewsDetailScreen(post: post)));
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16, left: 12, right: 12),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CachedNetworkImage(
+              imageUrl: post.featuredImageUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => _imagePlaceholder(),
+              errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 40, color: Colors.red),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      unescape.convert(post.title),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.hindVadodara(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.green),
+                    onPressed: () => _shareToWhatsApp(post),
+                  ),
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.facebook, color: Colors.blue),
+                    onPressed: () => _shareToFacebook(post),
+                  ),
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.twitter, color: Colors.lightBlue),
+                    onPressed: () => _shareToTwitter(post),
+                  ),
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.telegram, color: Colors.blueAccent),
+                    onPressed: () => _shareToTelegram(post),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        /// ✅ **News Image with Square Upper Borders**
-        AspectRatio(
-          aspectRatio: 16 / 9,
-          child: CachedNetworkImage(
-            imageUrl: post.featuredImageUrl,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => _imagePlaceholder(),
-            errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 40, color: Colors.red),
-          ),
-        ),
-
-        /// ✅ **Title Section with Rounded Bottom Borders**
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey[300], // ✅ Light grey background for title
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(12), // ✅ Lower corners rounded
-              bottomRight: Radius.circular(12), // ✅ Lower corners rounded
-            ),
-          ),
-          child: Text(
-            unescape.convert(post.title),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.hindVadodara(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-
-  Widget _imagePlaceholder() {
-    return Container(
-      color: Colors.grey[300],
-      child: const Center(child: CircularProgressIndicator()),
     );
   }
+
+  /// ✅ Social Sharing Methods
+  void _shareToWhatsApp(Post post) async {
+    final url = "https://wa.me/?text=${Uri.encodeComponent("${post.title}\n${post.link}")}";
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
+    }
+  }
+
+  void _shareToFacebook(Post post) async {
+    final url = "https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(post.link)}";
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
+    }
+  }
+
+  void _shareToTwitter(Post post) async {
+    final url = "https://twitter.com/intent/tweet?text=${Uri.encodeComponent("${post.title}\n${post.link}")}";
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
+    }
+  }
+
+  void _shareToTelegram(Post post) async {
+    final url = "https://t.me/share/url?url=${Uri.encodeComponent(post.link)}&text=${Uri.encodeComponent(post.title)}";
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
+    }
+  }
+
+  Widget _imagePlaceholder() => Container(color: Colors.grey[300], child: const Center(child: CircularProgressIndicator()));
 }

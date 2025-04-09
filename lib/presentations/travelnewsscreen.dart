@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:newsapp/models/post.dart';
 import 'package:newsapp/presentations/home_screen.dart';
 import 'package:newsapp/services/api_services.dart';
@@ -10,10 +11,11 @@ import 'package:newsapp/presentations/searchscreen.dart';
 import 'package:newsapp/presentations/profile.dart';
 import 'package:newsapp/presentations/sportscreen.dart';
 import 'package:newsapp/presentations/automationnewsscreen.dart';
-import 'package:newsapp/presentations/crimescreen..dart';
+import 'package:newsapp/presentations/crimescreen.dart';
 import 'package:newsapp/presentations/shorts_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 class TravelNewsScreen extends StatefulWidget {
   const TravelNewsScreen({super.key});
 
@@ -22,14 +24,100 @@ class TravelNewsScreen extends StatefulWidget {
 }
 
 class _TravelNewsScreenState extends State<TravelNewsScreen> {
-  Future<List<Post>>? travelPosts;
   final HtmlUnescape unescape = HtmlUnescape();
-  String selectedCategory = "Travel"; 
+  final ScrollController _scrollController = ScrollController();
+
+  List<Post> travelPosts = [];
+  bool isLoading = false;
+  bool hasMore = true;
+  int page = 1;
+  String selectedCategory = "Travel";
+
+  String selectedCity = "";
+  String selectedDate = "";
+
+  final List<String> cities = [
+    "Ahmedabad",
+    "Surat",
+    "Vadodara",
+    "Rajkot",
+    "Bhavnagar",
+    "Gandhinagar",
+    "Jamnagar",
+    "Junagadh",
+    "Nadiad",
+    "Morbi",
+    "Bharuch",
+    "Mehsana",
+    "Anand",
+    "Navsari",
+    "Valsad",
+    "Porbandar",
+    "Godhra",
+    "Palanpur",
+    "Veraval",
+    "Dahod",
+  ];
 
   @override
   void initState() {
     super.initState();
-    travelPosts = ApiService().fetchTravelNews();
+    _fetchTravelPosts();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100 &&
+          !isLoading &&
+          hasMore) {
+        _fetchTravelPosts();
+      }
+    });
+  }
+
+  Future<void> _fetchTravelPosts({bool reset = false}) async {
+    if (isLoading) return;
+    setState(() => isLoading = true);
+
+    if (reset) {
+      setState(() {
+        travelPosts.clear();
+        page = 1;
+        hasMore = true;
+      });
+    }
+
+    try {
+      final fetchedPosts = await ApiService().fetchTravelNews(
+        page: page,
+        city: selectedCity,
+        date: selectedDate,
+      );
+      setState(() {
+        page++;
+        travelPosts.addAll(fetchedPosts);
+        if (fetchedPosts.isEmpty) hasMore = false;
+      });
+    } catch (e) {
+      debugPrint("Error fetching travel news: $e");
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _selectDate() async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => selectedDate = DateFormat('yyyy-MM-dd').format(picked));
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -43,6 +131,7 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
             _buildSectionTitle("Latest Travel News"),
             _buildAppBar(),
             _buildCategoriesList(),
+            _buildFilterRow(),
             Expanded(child: _buildVerticalNewsList()),
           ],
         ),
@@ -55,10 +144,15 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Text(
         title,
-        style: GoogleFonts.hindVadodara(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.orange.shade900),
+        style: GoogleFonts.hindVadodara(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: Colors.orange.shade900,
+        ),
       ),
     );
   }
+
   Widget _buildAppBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -129,9 +223,7 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
                   ),
                 );
               } else {
-                setState(() {
-                  selectedCategory = category["title"];
-                });
+                setState(() => selectedCategory = category["title"]);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => category["screen"]),
@@ -167,25 +259,46 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
     );
   }
 
+  Widget _buildFilterRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              value: selectedCity.isEmpty ? null : selectedCity,
+              hint: const Text("Select City"),
+              items: cities.map((city) => DropdownMenuItem(value: city, child: Text(city))).toList(),
+              onChanged: (value) => setState(() => selectedCity = value ?? ""),
+            ),
+          ),
+          const SizedBox(width: 10),
+          TextButton(
+            onPressed: _selectDate,
+            child: Text(selectedDate.isEmpty ? "Pick Date" : selectedDate),
+          ),
+          ElevatedButton(
+            onPressed: () => _fetchTravelPosts(reset: true),
+            child: const Text("Filter"),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildVerticalNewsList() {
-    return FutureBuilder<List<Post>>(
-      future: travelPosts,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('⚠️ No travel news available!'));
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      itemCount: travelPosts.length + (isLoading ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index < travelPosts.length) {
+          final post = travelPosts[index];
+          return _buildNewsCard(post);
         } else {
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            itemCount: snapshot.data!.length,
-            itemBuilder: (context, index) {
-              final post = snapshot.data![index];
-              return _buildNewsCard(post);
-            },
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
           );
         }
       },
@@ -195,7 +308,6 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
   Widget _buildNewsCard(Post post) {
     return GestureDetector(
       onTap: () {
-        // ✅ Navigate to NewsDetailScreen when tapped
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => NewsDetailScreen(post: post)),
@@ -204,9 +316,7 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
       child: Card(
         margin: const EdgeInsets.only(bottom: 16),
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -231,7 +341,6 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // ✅ News Title
                   Expanded(
                     child: Text(
                       unescape.convert(post.title),
@@ -240,8 +349,6 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
                       style: GoogleFonts.hindVadodara(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                   ),
-
-                  // ✅ WhatsApp & Facebook Share Icons
                   Row(
                     children: [
                       IconButton(
@@ -263,9 +370,9 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
     );
   }
 
-  /// ✅ **WhatsApp Share Function**
   void _shareOnWhatsApp(Post post) async {
-    final url = "https://wa.me/?text=${Uri.encodeComponent('${post.title}\n${post.link}')}";
+    final url = "https://wa.me/?text=\${Uri.encodeComponent('\${post.title}\n\${post.link}')}";
+
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } else {
@@ -273,9 +380,9 @@ class _TravelNewsScreenState extends State<TravelNewsScreen> {
     }
   }
 
-  /// ✅ **Facebook Share Function**
   void _shareOnFacebook(Post post) async {
-    final url = "https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(post.link)}";
+    final url = "https://www.facebook.com/sharer/sharer.php?u=\${Uri.encodeComponent(post.link)}";
+
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } else {

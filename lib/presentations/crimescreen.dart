@@ -13,7 +13,7 @@ import 'package:newsapp/presentations/travelnewsscreen.dart';
 import 'package:newsapp/presentations/automationnewsscreen.dart';
 import 'package:newsapp/presentations/shorts_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart'; // ✅ For WhatsApp & Facebook icons
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class CrimeNewsScreen extends StatefulWidget {
   const CrimeNewsScreen({super.key});
@@ -23,16 +23,91 @@ class CrimeNewsScreen extends StatefulWidget {
 }
 
 class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
-  Future<List<Post>>? crimePosts;
   final HtmlUnescape unescape = HtmlUnescape();
-  String selectedCategory = "Crime"; // Default category
+  final ScrollController _scrollController = ScrollController();
+
+  List<Post> _crimePosts = [];
+  int _page = 1;
+  bool _isLoading = false;
+  bool _hasMore = true;
+  String selectedCategory = "Crime";
+  String? _selectedCityTag;
+  DateTime? _selectedDate;
+
+  final List<Map<String, String>> _cities = [
+    {"name": "All", "tag": ""},
+    {"name": "Ahmedabad", "tag": "469569"},
+    {"name": "Surat", "tag": "456649"},
+    {"name": "Rajkot", "tag": "469607"},
+    {"name": "Vadodara", "tag": "469610"},
+    {"name": "Bhavnagar", "tag": "469612"},
+    {"name": "Jamnagar", "tag": "469613"},
+    {"name": "Gandhinagar", "tag": "469615"},
+    {"name": "Junagadh", "tag": "469616"},
+    {"name": "Anand", "tag": "469617"},
+    {"name": "Nadiad", "tag": "469618"},
+    {"name": "Navsari", "tag": "469619"},
+    {"name": "Bharuch", "tag": "469620"},
+    {"name": "Mehsana", "tag": "469621"},
+    {"name": "Bhuj", "tag": "469622"},
+    {"name": "Palanpur", "tag": "469623"},
+    {"name": "Valsad", "tag": "469624"},
+    {"name": "Vapi", "tag": "469625"},
+    {"name": "Porbandar", "tag": "469626"},
+    {"name": "Amreli", "tag": "469627"},
+    {"name": "Surendranagar", "tag": "469628"}
+  ];
 
   @override
   void initState() {
     super.initState();
-    crimePosts = ApiService().fetchCrimeNews();
+    _fetchCrimePosts();
+    _scrollController.addListener(_scrollListener);
   }
-@override
+
+  Future<void> _fetchCrimePosts({bool reset = false}) async {
+    if (_isLoading || (!_hasMore && !reset)) return;
+    if (reset) {
+      setState(() {
+        _crimePosts.clear();
+        _page = 1;
+        _hasMore = true;
+      });
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final newPosts = await ApiService().fetchCrimeNews(
+        page: _page,
+        tag: _selectedCityTag ?? "",
+        afterDate: _selectedDate?.toIso8601String(),
+      );
+      setState(() {
+        _page++;
+        _crimePosts.addAll(newPosts);
+        if (newPosts.length < 10) _hasMore = false;
+      });
+    } catch (e) {
+      debugPrint("Error fetching crime news: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
+      _fetchCrimePosts();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -42,6 +117,7 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
           children: [
             _buildAppBar(),
             _buildCategoriesList(),
+            _buildFilters(),
             _buildSectionTitle("Latest Crime News"),
             Expanded(child: _buildVerticalNewsList()),
           ],
@@ -49,6 +125,55 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
       ),
     );
   }
+
+  Widget _buildFilters() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: DropdownButton<String>(
+              value: _selectedCityTag,
+              hint: const Text("City"),
+              isExpanded: true,
+              items: _cities.map((city) {
+                return DropdownMenuItem<String>(
+                  value: city["tag"],
+                  child: Text(city["name"]!),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() => _selectedCityTag = value);
+                _fetchCrimePosts(reset: true);
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.date_range, size: 18),
+            label: Text(
+              _selectedDate != null ? _selectedDate!.toLocal().toString().split(' ')[0] : 'Pick Date',
+              style: const TextStyle(fontSize: 14),
+            ),
+            onPressed: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(2023),
+                lastDate: DateTime.now(),
+              );
+              if (picked != null) {
+                setState(() => _selectedDate = picked);
+                _fetchCrimePosts(reset: true);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+
 
   Widget _buildAppBar() {
     return Padding(
@@ -168,34 +293,34 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
     );
   }
 
-
   Widget _buildVerticalNewsList() {
-    return FutureBuilder<List<Post>>(
-      future: crimePosts,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('⚠️ No crime news available!'));
-        } else {
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            itemCount: snapshot.data!.length,
-            itemBuilder: (context, index) {
-              final post = snapshot.data![index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => NewsDetailScreen(post: post)),
-                  );
-                },
-                child: _buildNewsCard(post),
+    if (_crimePosts.isEmpty && _isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    } else if (_crimePosts.isEmpty) {
+      return const Center(child: Text('⚠️ No crime news available!'));
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      itemCount: _crimePosts.length + (_hasMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index < _crimePosts.length) {
+          final post = _crimePosts[index];
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => NewsDetailScreen(post: post)),
               );
             },
+            child: _buildNewsCard(post),
           );
+        } else {
+          return const Center(child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: CircularProgressIndicator(),
+          ));
         }
       },
     );
@@ -211,7 +336,6 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// ✅ **News Image**
           AspectRatio(
             aspectRatio: 16 / 9,
             child: CachedNetworkImage(
@@ -221,15 +345,12 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
               errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 40, color: Colors.red),
             ),
           ),
-
-          /// ✅ **Title Section with Social Media Icons**
           Container(
             padding: const EdgeInsets.all(12),
             color: Colors.grey[300],
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                /// ✅ **Title**
                 Expanded(
                   child: Text(
                     unescape.convert(post.title),
@@ -238,21 +359,15 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
                     style: GoogleFonts.hindVadodara(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                   ),
                 ),
-
-                /// ✅ **WhatsApp and Facebook Share Icons**
                 Row(
                   children: [
                     IconButton(
-                      icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.green), // WhatsApp icon
-                      onPressed: () {
-                        _shareOnWhatsApp(post.link);
-                      },
+                      icon: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.green),
+                      onPressed: () => _shareOnWhatsApp(post.link),
                     ),
                     IconButton(
                       icon: const Icon(Icons.facebook, color: Colors.blue),
-                      onPressed: () {
-                        _shareOnFacebook(post.link);
-                      },
+                      onPressed: () => _shareOnFacebook(post.link),
                     ),
                   ],
                 ),
@@ -264,7 +379,6 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
     );
   }
 
-  /// ✅ **WhatsApp Share Function**
   void _shareOnWhatsApp(String link) async {
     final uri = Uri.parse("https://wa.me/?text=$link");
     if (await canLaunchUrl(uri)) {
@@ -274,7 +388,6 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
     }
   }
 
-  /// ✅ **Facebook Share Function**
   void _shareOnFacebook(String link) async {
     final uri = Uri.parse("https://www.facebook.com/sharer/sharer.php?u=$link");
     if (await canLaunchUrl(uri)) {
@@ -290,5 +403,4 @@ class _CrimeNewsScreenState extends State<CrimeNewsScreen> {
       child: const Center(child: CircularProgressIndicator()),
     );
   }
-
 }

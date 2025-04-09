@@ -6,9 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class ApiService {
   final String baseUrl = "https://mantavyanews.com/wp-json/wp/v2/posts?_embed=true";
-
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   // ✅ Initialize Local Notifications
   Future<void> initializeNotifications() async {
@@ -21,24 +19,43 @@ class ApiService {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
-  // ✅ Fetch All Posts
-  Future<List<Post>> fetchPosts({String searchQuery = "", String category = "", String tag = ""}) async {
+  // ✅ Generic Fetch Posts with Filters
+  Future<List<Post>> fetchPosts({
+    String searchQuery = "",
+    String category = "",
+    String tag = "",
+    String city = "",
+    String date = "",
+    int page = 1,
+  }) async {
     try {
-      String url = baseUrl;
+      String url = "$baseUrl&page=$page";
 
       if (searchQuery.isNotEmpty) url += "&search=$searchQuery";
       if (category.isNotEmpty) url += "&categories=$category";
       if (tag.isNotEmpty) url += "&tags=$tag";
+      if (date.isNotEmpty) {
+        url += "&after=${date}T00:00:00&before=${date}T23:59:59";
+      }
 
       print("📡 Fetching posts from: $url");
-
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         List<dynamic> jsonData = json.decode(response.body);
-        return jsonData.map((json) => Post.fromJson(json)).toList();
+
+        // ✅ Filter city on client-side based on tag slugs
+        List<Post> posts = jsonData.map((json) => Post.fromJson(json)).toList();
+
+        if (city.isNotEmpty) {
+          posts = posts.where((post) =>
+              post.content.toLowerCase().contains(city.toLowerCase()) ||
+              post.title.toLowerCase().contains(city.toLowerCase())).toList();
+        }
+
+        return posts;
       } else {
-        throw Exception("❌ Failed to load news. Status Code: ${response.statusCode}");
+        throw Exception("❌ Failed to load news. Status Code: \${response.statusCode}");
       }
     } catch (e) {
       print("⚠️ Error fetching posts: $e");
@@ -46,41 +63,57 @@ class ApiService {
     }
   }
 
-  // ✅ Fetch Sports News
-  Future<List<Post>> fetchSportsNews() async {
+  // ✅ Sports News
+  Future<List<Post>> fetchSportsNews({int page = 1, String city = "", String date = ""}) async {
     const String sportsCategories = "65735,116";
     const String sportsTags = "1086";
-    return fetchPosts(category: sportsCategories, tag: sportsTags);
+    return fetchPosts(category: sportsCategories, tag: sportsTags, page: page, city: city, date: date);
   }
 
-  // ✅ Fetch Crime News
-  Future<List<Post>> fetchCrimeNews({String searchQuery = ""}) async {
-    const String crimeCategories = "94,438669";
-    const String crimeTags = "456649,469569,469607";
-    return fetchPosts(category: crimeCategories, tag: crimeTags, searchQuery: searchQuery);
+  // ✅ Crime News
+  Future<List<Post>> fetchCrimeNews({
+    String searchQuery = "",
+    int page = 1,
+    String tag = "",
+    String? afterDate,
+    String city = "",
+  }) async {
+    const String baseCrimeTags = "456649,469569,469607";
+    const String categories = "94,438669";
+    String combinedTags = baseCrimeTags;
+    if (tag.isNotEmpty) combinedTags += ",\$tag";
+
+    return fetchPosts(
+      category: categories,
+      tag: combinedTags,
+      searchQuery: searchQuery,
+      city: city,
+      date: afterDate ?? "",
+      page: page,
+    );
   }
 
-  // ✅ Fetch Travel News
-  Future<List<Post>> fetchTravelNews() async {
+  // ✅ Travel News
+  Future<List<Post>> fetchTravelNews({int page = 1, String city = "", String date = ""}) async {
     const String travelCategory = "65735";
     const String travelTags = "574123,685";
-    return fetchPosts(category: travelCategory, tag: travelTags);
+    return fetchPosts(category: travelCategory, tag: travelTags, page: page, city: city, date: date);
   }
 
-  // ✅ Fetch Tech & Auto News
-  Future<List<Post>> fetchTechAutoNews({String searchQuery = ""}) async {
+  // ✅ Tech & Auto News
+  Future<List<Post>> fetchTechAutoNews({int page = 1, String searchQuery = "", String city = "", String date = ""}) async {
     const String techAutoCategory = "127";
     const String techTags = "571913,522764,572214";
-    return fetchPosts(category: techAutoCategory, tag: techTags, searchQuery: searchQuery);
+    return fetchPosts(category: techAutoCategory, tag: techTags, searchQuery: searchQuery, page: page, city: city, date: date);
   }
 
-  // ✅ Fetch Breaking News
+  // ✅ Breaking News
   Future<List<Post>> fetchBreakingNews() async {
     const String breakingNewsTag = "514991";
     return fetchPosts(tag: breakingNewsTag);
   }
 
-  // ✅ Check for New Breaking News & Trigger Notification
+  // ✅ Check & Notify New Breaking News
   Future<void> checkForNewBreakingNews() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     int? lastNewsId = prefs.getInt('last_breaking_news_id');
@@ -90,19 +123,17 @@ class ApiService {
     if (breakingNews.isNotEmpty) {
       int latestNewsId = breakingNews.first.id;
 
-      // ✅ Fix: Ensure lastNewsId is not null
       if (lastNewsId == null || latestNewsId > lastNewsId) {
         await _sendNotification(
           breakingNews.first.title,
           breakingNews.first.link,
         );
-
         await prefs.setInt('last_breaking_news_id', latestNewsId);
       }
     }
   }
 
-  // ✅ Send Local Notification for Breaking News
+  // ✅ Trigger Local Notification
   Future<void> _sendNotification(String title, String link) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
@@ -125,7 +156,7 @@ class ApiService {
     );
   }
 
-  // ✅ YouTube Shorts API
+  // ✅ YouTube Shorts
   final String youtubeApiKey = "AIzaSyBuUH3_8xOxbefHdJT3NW6dkZuvO9fgLzg";
   final String youtubeChannelId = "UCIXeA1npsX8jbl62TdP9-PA";
 
@@ -170,7 +201,7 @@ class ApiService {
         ));
       }
 
-      print("🎥 Total Shorts Found: ${shortsVideos.length}");
+      print("🎥 Total Shorts Found: \${shortsVideos.length}");
       return shortsVideos;
     } catch (e) {
       print("⚠️ Error fetching YouTube Shorts: $e");

@@ -5,7 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:newsapp/presentations/NewsDetailScreen.dart';
-import 'package:newsapp/presentations/crimescreen..dart';
+import 'package:newsapp/presentations/crimescreen.dart';
 import 'package:newsapp/presentations/searchscreen.dart';
 import 'package:newsapp/presentations/profile.dart';
 import 'package:newsapp/presentations/automationnewsscreen.dart';
@@ -23,14 +23,53 @@ class SportsNewsScreen extends StatefulWidget {
 }
 
 class _SportsNewsScreenState extends State<SportsNewsScreen> {
-  Future<List<Post>>? sportsPosts;
+  List<Post> sportsPosts = [];
   final HtmlUnescape unescape = HtmlUnescape();
   String selectedCategory = "Sports";
+  int page = 1;
+  bool isLoadingMore = false;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    sportsPosts = ApiService().fetchSportsNews();
+    _fetchSportsNews();
+    _scrollController.addListener(_scrollListener);
+  }
+
+  Future<void> _fetchSportsNews() async {
+    List<Post> newPosts = await ApiService().fetchSportsNews(page: page);
+    setState(() {
+      sportsPosts.addAll(newPosts);
+    });
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !isLoadingMore) {
+      _loadMoreNews();
+    }
+  }
+
+  Future<void> _loadMoreNews() async {
+    setState(() {
+      isLoadingMore = true;
+    });
+
+    page++;
+    List<Post> morePosts = await ApiService().fetchSportsNews(page: page);
+
+    setState(() {
+      sportsPosts.addAll(morePosts);
+      isLoadingMore = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -59,8 +98,7 @@ class _SportsNewsScreenState extends State<SportsNewsScreen> {
       ),
     );
   }
-
-  /// ✅ **App Bar**
+/// ✅ **App Bar**
   Widget _buildAppBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -198,27 +236,15 @@ class _SportsNewsScreenState extends State<SportsNewsScreen> {
       ),
     );
   }
-
-  /// ✅ **News List**
   Widget _buildVerticalNewsList() {
-    return FutureBuilder<List<Post>>(
-      future: sportsPosts,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    return ListView.builder(
+      controller: _scrollController,
+      itemCount: sportsPosts.length + (isLoadingMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == sportsPosts.length) {
           return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('⚠️ No sports news available!'));
-        } else {
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            itemCount: snapshot.data!.length,
-            itemBuilder: (context, index) {
-              return _buildNewsCard(snapshot.data![index]);
-            },
-          );
         }
+        return _buildNewsCard(sportsPosts[index]);
       },
     );
   }
